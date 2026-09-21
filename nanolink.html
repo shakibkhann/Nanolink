@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vanish — Self-Destructing Messages</title>
+<style>
+  :root{
+    --ink:#1a1f1c;
+    --paper:#f6f4ee;
+    --moss:#2f4a3c;
+    --moss-light:#4a6b57;
+    --ember:#c1502e;
+    --line: rgba(26,31,28,0.12);
+    box-sizing:border-box;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Iowan Old Style','Georgia',serif;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#eeeee6;
+      --paper:#141815;
+      --moss:#7fae93;
+      --moss-light:#a3c9b1;
+      --ember:#e08a63;
+      --line: rgba(238,238,230,0.14);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#eeeee6;
+    --paper:#141815;
+    --moss:#7fae93;
+    --moss-light:#a3c9b1;
+    --ember:#e08a63;
+    --line: rgba(238,238,230,0.14);
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:48px 24px 80px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:40px;}
+  .logo{font-size:22px;letter-spacing:0.02em;font-weight:600;}
+  .logo span{color:var(--moss);}
+  .tag{font-family:-apple-system,sans-serif;font-size:12px;color:var(--ink);opacity:0.5;}
+  h1{font-size:30px;line-height:1.25;font-weight:600;margin:0 0 8px;}
+  .lede{font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6;opacity:0.72;margin:0 0 36px;max-width:46ch;}
+  .card{
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:28px;
+    margin-bottom:20px;
+  }
+  .card h2{font-family:-apple-system,sans-serif;font-size:13px;font-weight:600;text-transform:none;margin:0 0 16px;color:var(--moss);}
+  label{display:block;font-family:-apple-system,sans-serif;font-size:13px;opacity:0.65;margin-bottom:6px;}
+  input,textarea{
+    width:100%;
+    font-family:-apple-system,sans-serif;
+    font-size:15px;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:var(--paper);
+    color:var(--ink);
+    margin-bottom:16px;
+  }
+  input:focus,textarea:focus,button:focus{outline:2px solid var(--moss);outline-offset:1px;}
+  textarea{min-height:100px;resize:vertical;}
+  button{
+    font-family:-apple-system,sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:11px 20px;
+    border:none;
+    border-radius:2px;
+    background:var(--moss);
+    color:var(--paper);
+    cursor:pointer;
+  }
+  button:hover{background:var(--moss-light);}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  .id-display{
+    font-family:'SF Mono',monospace;
+    font-size:20px;
+    letter-spacing:0.04em;
+    padding:14px 16px;
+    border:1px dashed var(--moss);
+    color:var(--moss);
+    margin-bottom:14px;
+    word-break:break-all;
+  }
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .msg{
+    border:1px solid var(--line);
+    padding:16px;
+    margin-bottom:10px;
+    font-family:-apple-system,sans-serif;
+    font-size:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+  }
+  .msg .meta{opacity:0.5;font-size:12px;}
+  .reveal-box{
+    border:1px solid var(--ember);
+    padding:20px;
+    margin-top:16px;
+    font-family:-apple-system,sans-serif;
+    font-size:15px;
+    line-height:1.6;
+  }
+  .warn{font-family:-apple-system,sans-serif;font-size:12px;opacity:0.55;margin-top:6px;}
+  .status{font-family:-apple-system,sans-serif;font-size:13px;margin-top:10px;min-height:18px;}
+  .status.ok{color:var(--moss);}
+  .status.err{color:var(--ember);}
+  footer{font-family:-apple-system,sans-serif;font-size:12px;opacity:0.45;margin-top:40px;text-align:center;}
+  .setup-note{
+    border-left:3px solid var(--ember);
+    padding:14px 18px;
+    font-family:-apple-system,sans-serif;
+    font-size:13px;
+    line-height:1.6;
+    opacity:0.85;
+    margin-bottom:28px;
+  }
+  code{font-family:'SF Mono',monospace;background:var(--line);padding:1px 5px;border-radius:2px;font-size:0.9em;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Vanish<span>.</span></div>
+    <div class="tag">unique-ID messaging</div>
+  </header>
+
+  <h1>Read once. Then it's gone.</h1>
+  <p class="lede">Create a unique ID, no phone number required. Send a message to someone's ID — once they open it, it's permanently deleted.</p>
+
+  <div id="setupNotice" class="setup-note">
+    This demo is currently running in <strong>local mode</strong> (limited to this browser). To work live across devices and people, it needs to be connected to Firebase — setup steps are in the README included with this page.
+  </div>
+
+  <div class="card" id="signupCard">
+    <h2>Create your ID</h2>
+    <div id="noIdView">
+      <label for="displayName">A name (for your reference only, never shown to others)</label>
+      <input id="displayName" type="text" placeholder="e.g. Alex" />
+      <button id="signupBtn">Generate ID</button>
+      <div class="status" id="signupStatus"></div>
+    </div>
+    <div id="hasIdView" style="display:none;">
+      <label>Your unique ID</label>
+      <div class="id-display" id="myId"></div>
+      <div class="row">
+        <button class="ghost" id="copyIdBtn">Copy ID</button>
+        <button class="ghost" id="resetBtn">Generate new ID</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Send a message</h2>
+    <label for="toId">Recipient's ID</label>
+    <input id="toId" type="text" placeholder="paste their unique ID" />
+    <label for="msgBody">Message</label>
+    <textarea id="msgBody" placeholder="Write your message..."></textarea>
+    <button id="sendBtn">Send</button>
+    <div class="status" id="sendStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your inbox</h2>
+    <div class="warn">Opening a message deletes it permanently — it can only be read once.</div>
+    <div id="inboxList" style="margin-top:16px;"></div>
+    <div id="revealArea"></div>
+  </div>
+
+  <footer>Vanish — no hidden tracking, no silent SMS. Everything happens visibly on this page.</footer>
+</div>
+
+<script>
+// ---------- LOCAL-MODE STORAGE ENGINE ----------
+// Swap this block for real Firebase calls (see README) to make it work
+// across devices/people. Functions below keep the same names so the UI
+// code never has to change.
+
+const DB_KEY = 'vanish_messages_v1';
+const ID_KEY = 'vanish_my_id';
+
+function loadDB(){
+  try{ return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); }catch(e){ return {}; }
+}
+function saveDB(db){
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+}
+function genId(){
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let id = '';
+  for(let i=0;i<8;i++) id += chars[Math.floor(Math.random()*chars.length)];
+  return id.slice(0,4) + '-' + id.slice(4);
+}
+
+function getMyId(){
+  try{ return localStorage.getItem(ID_KEY); }catch(e){ return null; }
+}
+function setMyId(id){
+  try{ localStorage.setItem(ID_KEY, id); }catch(e){}
+}
+
+async function apiCreateId(name){
+  const id = genId();
+  setMyId(id);
+  return id;
+}
+async function apiSendMessage(toId, body){
+  const db = loadDB();
+  if(!db[toId]) db[toId] = [];
+  db[toId].push({
+    id: 'm' + Date.now() + Math.random().toString(36).slice(2,6),
+    body,
+    ts: Date.now(),
+    from: getMyId() || 'unknown'
+  });
+  saveDB(db);
+}
+async function apiListInbox(myId){
+  const db = loadDB();
+  return db[myId] || [];
+}
+async function apiRevealAndDelete(myId, msgId){
+  const db = loadDB();
+  const list = db[myId] || [];
+  const idx = list.findIndex(m => m.id === msgId);
+  if(idx === -1) return null;
+  const msg = list[idx];
+  list.splice(idx,1);
+  db[myId] = list;
+  saveDB(db);
+  return msg;
+}
+
+// ---------- UI WIRING ----------
+const $ = sel => document.querySelector(sel);
+
+function refreshIdentityUI(){
+  const id = getMyId();
+  if(id){
+    $('#noIdView').style.display = 'none';
+    $('#hasIdView').style.display = 'block';
+    $('#myId').textContent = id;
+  } else {
+    $('#noIdView').style.display = 'block';
+    $('#hasIdView').style.display = 'none';
+  }
+}
+
+async function refreshInbox(){
+  const id = getMyId();
+  const list = $('#inboxList');
+  list.innerHTML = '';
+  if(!id){
+    list.innerHTML = '<div class="warn">Create your ID first.</div>';
+    return;
+  }
+  const inbox = await apiListInbox(id);
+  if(inbox.length === 0){
+    list.innerHTML = '<div class="warn">No new messages.</div>';
+    return;
+  }
+  inbox.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'msg';
+    const date = new Date(m.ts).toLocaleString();
+    row.innerHTML = `<span>New message <span class="meta">— ${date}</span></span>`;
+    const btn = document.createElement('button');
+    btn.textContent = 'Read (one time)';
+    btn.onclick = async () => {
+      const revealed = await apiRevealAndDelete(id, m.id);
+      const area = $('#revealArea');
+      if(revealed){
+        area.innerHTML = `<div class="reveal-box">${escapeHtml(revealed.body)}</div><div class="warn">This message has now been deleted.</div>`;
+      }
+      refreshInbox();
+    };
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+$('#signupBtn').addEventListener('click', async () => {
+  const status = $('#signupStatus');
+  try{
+    const id = await apiCreateId($('#displayName').value.trim());
+    status.textContent = 'ID created.';
+    status.className = 'status ok';
+    refreshIdentityUI();
+    refreshInbox();
+  }catch(e){
+    status.textContent = 'Something went wrong, please try again.';
+    status.className = 'status err';
+  }
+});
+
+$('#copyIdBtn').addEventListener('click', () => {
+  const id = getMyId();
+  navigator.clipboard?.writeText(id).then(()=>{
+    const s = $('#signupStatus');
+    s.textContent = 'ID copied.';
+    s.className = 'status ok';
+  }).catch(()=>{});
+});
+
+$('#resetBtn').addEventListener('click', () => {
+  try{ localStorage.removeItem(ID_KEY); }catch(e){}
+  refreshIdentityUI();
+  refreshInbox();
+});
+
+$('#sendBtn').addEventListener('click', async () => {
+  const status = $('#sendStatus');
+  const toId = $('#toId').value.trim();
+  const body = $('#msgBody').value.trim();
+  if(!toId || !body){
+    status.textContent = 'Both recipient ID and message are required.';
+    status.className = 'status err';
+    return;
+  }
+  try{
+    await apiSendMessage(toId, body);
+    status.textContent = 'Message sent.';
+    status.className = 'status ok';
+    $('#msgBody').value = '';
+    refreshInbox();
+  }catch(e){
+    status.textContent = 'Failed to send message.';
+    status.className = 'status err';
+  }
+});
+
+refreshIdentityUI();
+refreshInbox();
+</script>
+</body>
+</html>
